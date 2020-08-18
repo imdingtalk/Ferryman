@@ -51,7 +51,10 @@ jobs:
       env:
         TARGET_USER: ${{ secrets.TARGET_USER }}
         TARGET_PASSWORD: ${{ secrets.TARGET_PASSWORD }}
+        CI_JOB_TOKEN:  ${{ secrets.CI_JOB_TOKEN }}
+        CI_JOB_USER: ${{ secrets.CI_JOB_USER }}
       run: |
+        docker login -u $CI_JOB_USER -p $CI_JOB_TOKEN registry.gitlab.com
         python ferryman.py
 
     - name: Git Commit & Push
