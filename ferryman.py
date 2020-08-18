@@ -190,6 +190,44 @@ def requests_docker(items, namespaces = "none"):
     result = sorted(src_list, key=lambda x: x["dt"],reverse=True)
     return result
 
+# 获取registry.gitlab.com的tag
+def requests_gitlab(items, namespaces = "none"):
+    logging.info (f"The current mirror source is registry.gitlab.com")
+    # 循环获取Tag
+    response_list = []
+    for i in range(100):
+        page = (i + 1)
+        url = (f"https://registry.gitlab.com/v2/repositories/{namespaces}/{items}/tags?page_size=100&page={page}")
+        r = requests.get(url)
+        buffer_list = r.json().get("results")
+
+        if len(buffer_list) != 0:
+            logging.info (f"The { page } page, tags count {len (buffer_list)}")
+            for x in buffer_list:
+                response_list.append(x)
+        else:
+            logging.info  (f"The { page } page, this is the last page")
+            break
+    # 提取Tag和Date
+    src_list = []
+    for v in response_list:
+        tag = v["name"]
+        # Get datetime
+        if v['last_updated'] == None:
+            dt = datetime_conv(0)
+        else:
+            dt = datetime_conv(v["last_updated"])
+        # Get sha256
+        for x in v['images']:
+            if x['architecture'] == "amd64":
+                if "digest" in x.keys():
+                    sha256 = x['digest']
+                else:
+                    sha256 = "Unknown"
+                src_list.append({"dt": dt, "sha256": sha256, "tag": tag})
+    # 按时间字段排序
+    result = sorted(src_list, key=lambda x: x["dt"],reverse=True)
+    return result
 
 # 定义镜像缓存队列
 queue_list = []
@@ -291,6 +329,8 @@ def main(yml):
             src_list = requests_quay(items, namespaces)
         elif 'docker.io' in source:
             src_list = requests_docker(items, namespaces)
+        elif 'registry.gitlab.com' in source:
+            src_list = requests_gitlab(items, namespaces)
         else:
             logging.info ("Unsupported sync source")
             exit ()
